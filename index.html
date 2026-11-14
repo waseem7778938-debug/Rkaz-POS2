@@ -3,29 +3,206 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام ركاز لنقاط البيع - Rkaz POS</title>
+    <title>نظام ركاز الشامل - ERP & POS</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body {
-            font-family: Tahoma, sans-serif;
-            background-color: #f4f6f9;
-            text-align: center;
-            padding: 50px;
-        }
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
-            display: inline-block;
-        }
-        h1 { color: #2c3e50; }
-        p { color: #7f8c8d; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h1>نظام ركاز لنقاط البيع (Rkaz POS)</h1>
-        <p>البرنامج يعمل بنجاح وجاهز لإدارة العمليات!</p>
-    </div>
+<body class="h-screen flex flex-col overflow-hidden">
+    <!-- الشريط العلوي -->
+    <header class="glass px-6 py-3 flex justify-between items-center border-b border-slate-700">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 text-white p-2 rounded-xl shadow-lg"><i class="fa-solid fa-cash-register text-xl"></i></div>
+            <h1 class="text-xl font-bold tracking-wider">نظام ركاز الشامل <span class="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-md border border-blue-500/30">ERP & POS</span></h1>
+        </div>
+        <div class="flex items-center gap-4 text-sm">
+            <span class="glass px-3 py-1.5 rounded-lg border border-slate-700"><i class="fa-solid fa-user-shield text-emerald-400 ml-2"></i> المشرف العام</span>
+            <span id="live-clock" class="glass px-3 py-1.5 rounded-lg font-mono text-cyan-400">00:00:00</span>
+        </div>
+    </header>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="flex-1 flex p-4 gap-4 overflow-hidden">
+        <!-- قسم المبيعات والكاشير -->
+        <section class="w-2/3 flex flex-col gap-4">
+            <div class="glass p-4 rounded-2xl flex gap-2">
+                <input type="text" id="barcode-input" placeholder="امسح الباركود أو ابحث عن الصنف (F2)..." class="flex-1 bg-slate-800 border border-slate-700 px-4 py-2 rounded-xl focus:outline-none focus:border-blue-500 text-white">
+                <button onclick="loadProducts()" class="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded-xl font-bold transition shadow-lg shadow-blue-600/30">بحث</button>
+            </div>
+            <div class="flex-1 glass rounded-2xl p-4 overflow-y-auto">
+                <table class="w-full text-right border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-700 text-slate-400 text-sm">
+                            <th class="py-2 px-3">الصنف</th>
+                            <th class="py-2 px-3">السعر</th>
+                            <th class="py-2 px-3">الكمية</th>
+                            <th class="py-2 px-3">الإجمالي</th>
+                            <th class="py-2 px-3 text-center">حذف</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cart-table-body">
+                        <!-- العناصر المضافة تفاعلياً -->
+                    </tbody>
+                </table>
+            </div>
+            <!-- ملخص الفاتورة وأزرار العمليات -->
+            <div class="glass p-4 rounded-2xl flex justify-between items-center">
+                <div>
+                    <span class="text-slate-400 text-sm">الإجمالي الصافي:</span>
+                    <h2 id="grand-total" class="text-3xl font-extrabold text-emerald-400">0.00 ر.س</h2>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="checkout('نقدي')" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-xl font-bold transition shadow-lg shadow-emerald-600/30"><i class="fa-solid fa-money-bill-wave ml-2"></i> دفع نقدي (F1)</button>
+                    <button onclick="checkout('شبكة')" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded-xl font-bold transition shadow-lg shadow-indigo-600/30"><i class="fa-solid fa-credit-card ml-2"></i> شبكة (F4)</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- لوحة التحكم الجانبية والأصناف السريعة -->
+        <section class="w-1/3 flex flex-col gap-4">
+            <div class="glass p-4 rounded-2xl flex-1 flex flex-col">
+                <h3 class="font-bold text-slate-300 mb-3 border-b border-slate-700 pb-2"><i class="fa-solid fa-boxes-stacked ml-2 text-blue-400"></i> الأصناف السريعة</h3>
+                <div id="products-grid" class="grid grid-cols-2 gap-2 overflow-y-auto flex-1">
+                    <!-- يتم تعبئتها ديناميكياً -->
+                </div>
+            </div>
+            <div class="glass p-4 rounded-2xl flex justify-around text-center">
+                <div>
+                    <span class="text-xs text-slate-400 block">إجمالي مبيعات اليوم</span>
+                    <span id="rep-sales" class="text-lg font-bold text-cyan-400">0.00</span>
+                </div>
+                <div class="border-r border-slate-700"></div>
+                <div>
+                    <span class="text-xs text-slate-400 block">إجمالي الأرباح</span>
+                    <span id="rep-profits" class="text-lg font-bold text-emerald-400">0.00</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // الساعة الحية
+        setInterval(() => {
+            document.getElementById('live-clock').innerText = new Date().toLocaleTimeString('en-US', { hour12: false });
+        }, 1000);
+
+        let cart = [];
+        let products = [];
+
+        async function loadProducts() {
+            try {
+                const res = await fetch('/api/products');
+                products = await res.json();
+                const grid = document.getElementById('products-grid');
+                grid.innerHTML = '';
+                products.forEach(p => {
+                    grid.innerHTML += `
+                        <div onclick='addToCart(${JSON.stringify(p)})' class="bg-slate-800/80 hover:bg-blue-600/20 border border-slate-700 p-3 rounded-xl cursor-pointer transition text-center flex flex-col justify-between">
+                            <span class="font-bold text-sm truncate">${p.name}</span>
+                            <span class="text-xs text-emerald-400 font-mono mt-2">${p.price} ر.س</span>
+                        </div>
+                    `;
+                });
+            } catch (err) { console.error('خطأ في تحميل الأصناف:', err); }
+        }
+
+        function addToCart(product) {
+            const existing = cart.find(item => item.id === product.id);
+            if (existing) {
+                existing.quantity++;
+            } else {
+                cart.push({ ...product, quantity: 1, originalPrice: product.price, discountVal: 0 });
+            }
+            renderCart();
+        }
+
+        function renderCart() {
+            const tbody = document.getElementById('cart-table-body');
+            tbody.innerHTML = '';
+            let grandTotal = 0;
+            cart.forEach((item, index) => {
+                const totalItemPrice = (item.originalPrice - item.discountVal) * item.quantity;
+                grandTotal += totalItemPrice;
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-800">
+                        <td class="py-3 px-3 font-medium">${item.name}</td>
+                        <td class="py-3 px-3">${item.originalPrice} ر.س</td>
+                        <td class="py-3 px-3"><input type="number" value="${item.quantity}" min="1" onchange="updateQty(${index}, this.value)" class="w-16 bg-slate-800 border border-slate-700 rounded text-center px-1"></td>
+                        <td class="py-3 px-3 text-emerald-400 font-bold">${totalItemPrice.toFixed(2)} ر.س</td>
+                        <td class="py-3 px-3 text-center"><button onclick="removeFromCart(${index})" class="text-red-400 hover:text-red-300"><i class="fa-solid fa-trash"></i></button></td>
+                    </tr>
+                `;
+            });
+            document.getElementById('grand-total').innerText = grandTotal.toFixed(2) + ' ر.س';
+        }
+
+        function updateQty(index, qty) {
+            cart[index].quantity = parseInt(qty) || 1;
+            renderCart();
+        }
+
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            renderCart();
+        }
+
+        async function checkout(method) {
+            if (cart.length === 0) {
+                alert('السلة فارغة!');
+                return;
+            }
+            const netAmount = cart.reduce((sum, item) => sum + ((item.originalPrice - item.discountVal) * item.quantity), 0);
+            const totalCost = cart.reduce((sum, item) => sum + (item.cost * item.quantity), 0);
+            const totalProfit = netAmount - totalCost;
+
+            const invoiceData = {
+                invoice_type: 'بيع',
+                payment_method: method,
+                customer_name: 'عميل نقدي',
+                total_amount: netAmount,
+                total_discount: 0,
+                net_amount: netAmount,
+                total_profit: totalProfit,
+                items: cart
+            };
+
+            try {
+                const res = await fetch('/api/sales', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(invoiceData)
+                });
+                const result = await res.json();
+                alert(result.message);
+                cart = [];
+                renderCart();
+                loadReports();
+            } catch (err) {
+                alert('حدث خطأ أثناء حفظ الفاتورة');
+            }
+        }
+
+        async function loadReports() {
+            try {
+                const res = await fetch('/api/reports');
+                const data = await res.json();
+                document.getElementById('rep-sales').innerText = data.total_sales.toFixed(2) + ' ر.س';
+                document.getElementById('rep-profits').innerText = data.total_profits.toFixed(2) + ' ر.س';
+            } catch (err) { console.error(err); }
+        }
+
+        // اختصارات لوحة المفاتيح
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'F1') { e.preventDefault(); checkout('نقدي'); }
+            if (e.key === 'F4') { e.preventDefault(); checkout('شبكة'); }
+            if (e.key === 'F2') { e.preventDefault(); document.getElementById('barcode-input').focus(); }
+        });
+
+        loadProducts();
+        loadReports();
+    </script>
 </body>
 </html>
